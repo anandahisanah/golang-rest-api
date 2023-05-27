@@ -4,6 +4,7 @@ import (
 	"assignment-2/database"
 	"assignment-2/models"
 	"encoding/json"
+	"fmt"
 	_ "fmt"
 	"net/http"
 	"time"
@@ -193,4 +194,71 @@ func UpdateOrderAndItems(c *gin.Context) {
 		"message": "Order updated successfully",
 		"data":    order,
 	})
+}
+
+func DeleteOrderAndItems(c *gin.Context) {
+	db := database.GetDB()
+	w := c.Writer
+
+	// params
+	orderId := c.Param("OrderId")
+
+	// find order by orderId
+	err := db.Where("order_id = ?", orderId).First(&models.Order{}).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": fmt.Sprintf("Order with id %s Not Found", orderId),
+		})
+		return
+	}
+
+	// Begin transaction
+    tx := db.Begin()
+
+	// delete items
+	errDeleteItems := tx.Where("order_id = ?", orderId).Delete(&models.Item{}).Error
+	if errDeleteItems != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Failed to delete Items",
+		})
+		return
+	}
+
+	// delete order
+	errDeleteOrder := tx.Where("order_id = ?", orderId).Delete(&models.Order{}).Error
+
+	if errDeleteOrder != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Failed to delete Order",
+		})
+		return
+	}
+
+	// commit transaction
+	errCommit := tx.Commit().Error
+	if errCommit != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Failed to commit transaction",
+		})
+		return
+	}
+
+	// response
+	w.Header().Set("Content-Type", "application/json")
+
+	jsonResponse, _ := json.Marshal(gin.H{
+		"code":    200,
+		"status":  "success",
+		"message": "Delete Success",
+	})
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
 }

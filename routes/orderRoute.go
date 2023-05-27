@@ -15,5 +15,7 @@ func StartServer() *gin.Engine {
 
 	router.PATCH("/order/:OrderId", controllers.UpdateOrderAndItems)
 
+	router.DELETE("/order/:OrderId", controllers.DeleteOrderAndItems)
+
 	return router
 }

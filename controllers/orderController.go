@@ -17,7 +17,7 @@ type CreateOrderRequest struct {
 }
 
 type CreateItemRequest struct {
-	ItemCode    string    `json:"itemCode"`
+	ItemCode    string `json:"itemCode"`
 	Description string `json:"description"`
 	Quantity    int    `json:"quantity"`
 }
@@ -71,12 +71,41 @@ func CreateOrderAndItems(c *gin.Context) {
 		Order.Items = append(Order.Items, Item)
 	}
 
+	// response
 	w.Header().Set("Content-Type", "application/json")
 
 	jsonResponse, _ := json.Marshal(gin.H{
 		"status":  "success",
 		"message": "Order created successfully",
 		"data":    Order,
+	})
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
+}
+
+func GetOrderAndItems(c *gin.Context) {
+	db := database.GetDB()
+	w := c.Writer
+
+	orders := []models.Order{}
+	err := db.Preload("Items").Find(&orders).Error
+
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"status":  "error",
+			"message": "Data not found",
+		})
+		return
+	}
+
+	// response
+	w.Header().Set("Content-Type", "application/json")
+
+	jsonResponse, _ := json.Marshal(gin.H{
+		"status":  "success",
+		"message": "Success",
+		"data":    orders,
 	})
 
 	w.WriteHeader(http.StatusOK)

@@ -4,14 +4,15 @@ import (
 	"assignment-2/database"
 	"assignment-2/models"
 	"encoding/json"
+	_ "fmt"
 	"net/http"
-	_ "time"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 type CreateOrderRequest struct {
-	OrderedAt    string              `json:"orderedAt"`
+	OrderedAt    time.Time           `json:"orderedAt"`
 	CustomerName string              `json:"customerName"`
 	Items        []CreateItemRequest `json:"items"`
 }
@@ -75,6 +76,7 @@ func CreateOrderAndItems(c *gin.Context) {
 	w.Header().Set("Content-Type", "application/json")
 
 	jsonResponse, _ := json.Marshal(gin.H{
+		"code":    200,
 		"status":  "success",
 		"message": "Order created successfully",
 		"data":    Order,
@@ -103,6 +105,7 @@ func GetOrderAndItems(c *gin.Context) {
 	w.Header().Set("Content-Type", "application/json")
 
 	jsonResponse, _ := json.Marshal(gin.H{
+		"code":    200,
 		"status":  "success",
 		"message": "Success",
 		"data":    orders,
@@ -110,4 +113,84 @@ func GetOrderAndItems(c *gin.Context) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
+}
+
+func UpdateOrderAndItems(c *gin.Context) {
+	db := database.GetDB()
+
+	// params
+	orderId := c.Param("OrderId")
+
+	// check order by orderId
+	var order models.Order
+	errFindOrder := db.Preload("Items").First(&order, orderId).Error
+	if errFindOrder != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"status":  "error",
+			"message": "Order not found",
+		})
+		return
+	}
+
+	var CreateOrderRequest CreateOrderRequest
+	errJson := c.ShouldBindJSON(&CreateOrderRequest)
+	if errJson != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Invalid JSON data",
+		})
+		return
+	}
+
+	// update order
+
+	// order.OrderedAt = CreateOrderRequest.OrderedAt
+	// order.CustomerName = CreateOrderRequest.CustomerName
+	// errUpdateOrder := db.Save(&order).Error
+
+	errUpdateOrder := db.Model(&order).Where("order_id = ?", orderId).Updates(models.Order{
+		CustomerName: CreateOrderRequest.CustomerName,
+		OrderedAt:    CreateOrderRequest.OrderedAt,
+	}).Error
+
+	if errUpdateOrder != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Failed to update Order",
+		})
+		return
+	}
+
+	// update item
+	for _, itemRequest := range CreateOrderRequest.Items {
+		var item models.Item
+		errFindItem := db.First(&item, itemRequest.ItemCode).Error
+		if errFindItem != nil {
+			c.JSON(http.StatusNotFound, gin.H{
+				"status":  "error",
+				"message": "Item not found",
+			})
+			return
+		}
+
+		item.ItemCode = itemRequest.ItemCode
+		item.Description = itemRequest.Description
+		item.Quantity = itemRequest.Quantity
+
+		errSaveItem := db.Save(&item).Error
+		if errSaveItem != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  "error",
+				"message": "Failed to update Item",
+			})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"status":  "success",
+		"message": "Order updated successfully",
+		"data":    order,
+	})
 }

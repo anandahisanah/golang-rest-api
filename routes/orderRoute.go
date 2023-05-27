@@ -13,5 +13,7 @@ func StartServer() *gin.Engine {
 
 	router.GET("/order", controllers.GetOrderAndItems)
 
+	router.PATCH("/order/:OrderId", controllers.UpdateOrderAndItems)
+
 	return router
 }

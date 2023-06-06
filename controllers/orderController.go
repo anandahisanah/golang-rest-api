@@ -106,10 +106,7 @@ func GetOrderAndItems(c *gin.Context) {
 	w.Header().Set("Content-Type", "application/json")
 
 	jsonResponse, _ := json.Marshal(gin.H{
-		"code":    200,
-		"status":  "success",
-		"message": "Success",
-		"data":    orders,
+		"Data": orders,
 	})
 
 	w.WriteHeader(http.StatusOK)
@@ -214,7 +211,7 @@ func DeleteOrderAndItems(c *gin.Context) {
 	}
 
 	// Begin transaction
-    tx := db.Begin()
+	tx := db.Begin()
 
 	// delete items
 	errDeleteItems := tx.Where("order_id = ?", orderId).Delete(&models.Item{}).Error

@@ -140,12 +140,6 @@ func UpdateOrderAndItems(c *gin.Context) {
 		return
 	}
 
-	// update order
-
-	// order.OrderedAt = CreateOrderRequest.OrderedAt
-	// order.CustomerName = CreateOrderRequest.CustomerName
-	// errUpdateOrder := db.Save(&order).Error
-
 	errUpdateOrder := db.Model(&order).Where("order_id = ?", orderId).Updates(models.Order{
 		CustomerName: CreateOrderRequest.CustomerName,
 		OrderedAt:    CreateOrderRequest.OrderedAt,
@@ -186,10 +180,8 @@ func UpdateOrderAndItems(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"status":  "success",
-		"message": "Order updated successfully",
-		"data":    order,
+		"code": 200,
+		"data": order,
 	})
 }
 
